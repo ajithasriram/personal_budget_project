@@ -52,14 +52,14 @@ function HomePage() {
                     </section>
                 </div>
         
-                <div className="text-box">
+                {/* <div className="text-box">
                     <section>
                         <h1>Chart</h1>
                         <p>
                             <canvas id="myChart" width="300" height="300"></canvas>
                         </p>
                     </section>
-                </div>
+                </div> */}
         
                 <div className="text-box">
                     <section>

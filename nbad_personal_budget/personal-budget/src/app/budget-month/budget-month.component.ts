@@ -46,9 +46,8 @@ export class BudgetMonthComponent implements OnInit {
       .find(row => row.startsWith('token'))
       .split('=')[1];
 
-    //getting the month and the year
+    //getting by month & year
     var start = (document.getElementById('start') as HTMLInputElement).value;
-    //fetching only month in it.
     var month = start.split("-");
     var month_value = parseInt(month[1]) - 1;
 
@@ -57,21 +56,12 @@ export class BudgetMonthComponent implements OnInit {
       'Authorization': `Bearer ${cookieValue}`
     })
 
-    this.http.get('http://localhost:3000/api/v1/getBudgetByMonth/' + month_value, { headers })
+    this.http.get('http://204.48.23.149:3000/api/v1/getBudgetByMonth/' + month_value, { headers })
       .subscribe(posts => {
         this.posts = posts["user_budget"];
         this.dataService.budgetData = posts["user_budget"];
 
         var result_budget = posts["user_budget"];
-
-        // var dt = this.dtOptions = {
-        //   pagingType: 'full_numbers',
-        //   pageLength: 5,
-        //   processing: true,
-        //   scrollY: "400px",
-        //   scrollCollapse: true
-        // };
-
 
         console.log(posts["user_budget"]);
         for (var i = 0; i < result_budget.length; i++) {
@@ -87,7 +77,6 @@ export class BudgetMonthComponent implements OnInit {
   }
 
   createPieChart() {
-    // var ctx = document.getElementById("myChart").getContext("2d");
     const ctx = document.getElementById('pie-chart');
     const myPieChart = new Chart(ctx, {
       type: 'pie',
@@ -96,8 +85,6 @@ export class BudgetMonthComponent implements OnInit {
   }
 
   createDoughNutChart() {
-    // var ctx = document.getElementById("myChart").getContext("2d");
-
     const ctx = document.getElementById('doughnut-chart');
     const myPieChart = new Chart(ctx, {
       type: 'doughnut',
@@ -106,8 +93,6 @@ export class BudgetMonthComponent implements OnInit {
   }
 
   createBarChart() {
-    // var ctx = document.getElementById("myChart").getContext("2d");
-
     const ctx = document.getElementById('bar-chart');
     const myPieChart = new Chart(ctx, {
       type: 'bar',
@@ -116,8 +101,6 @@ export class BudgetMonthComponent implements OnInit {
   }
 
   createLineChart() {
-    // var ctx = document.getElementById("myChart").getContext("2d");
-
     const ctx = document.getElementById('line-chart');
     const myPieChart = new Chart(ctx, {
       type: 'line',

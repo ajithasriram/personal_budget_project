@@ -1,37 +1,38 @@
 const { response } = require("express");
 const express = require("express");
-const { request } = require("http");
-const mongo = require('mongodb');
-const jwt = require('jsonwebtoken');
 const { requestBody, validationResult, body, header, param, query } = require('express-validator');
 const user = require("./User");
 const User = require("./User");
 const NodeCache = require('node-cache');
+const { request } = require("http");
+const mongo = require('mongodb');
+const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs')
 const cookieParser = require('cookie-parser');
+var validator = require('validator');
 
 const MongoClient = mongo.MongoClient;
 const uri = "mongodb+srv://projectuser:personal_budget@nbadcluster.5waez.mongodb.net/personal_budget_project?retryWrites=true&w=majority";
 var client;
 var collection;
-var pb_collection;
-var validator = require('validator');
+var pbCollection;
 const { timeStamp } = require("console");
 const tokenSecret = "wFq9+ssDbT#e2H9^";
+
 var decoded = {};
 var token;
 const myCache = new NodeCache({ stdTTL: 3600, checkperiod: 60 });
 
 
-var connectToDb = function (req, res, next) {
+var connectionDb = function (req, res, next) {
     client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true });
     client.connect(err => {
         if (err) {
             closeConnection();
-            return res.status(400).json({ "error": "Could not connect to database: " + err });
+            return res.status(400).json({ "error": "Cannot connect to database: " + err });
         }
         collection = client.db("personal_budget_project").collection("userData");
-        pb_collection = client.db("personal_budget_project").collection("budgetData");
+        pbCollection = client.db("personal_budget_project").collection("budgetData");
         console.log("connected to database");
         next();
     });
@@ -42,20 +43,18 @@ var closeConnection = function () {
     client.close();
 }
 
-
 var verifyToken = function (req, res, next) {
-    // console.log("yes it is coming to verifytoken");
     var headerValue = req.header("Authorization");
     console.log("in verify token "+headerValue)
     if (!headerValue) {
         closeConnection();
-        return res.status(400).json({ "error": "Authorization header needs to be provided for using API" });
+        return res.status(400).json({ "error": "Authorization header should be provided for using API" });
     }
 
-    var authData = headerValue.split(' ');
+    var authKey = headerValue.split(' ');
 
-    if (authData && authData.length == 2 && authData[0] === 'Bearer') {
-        token = authData[1];
+    if (authKey && authKey.length == 2 && authKey[0] === 'Bearer') {
+        token = authKey[1];
         if (myCache.has(token)) {
             closeConnection();
             return res.status(400).json({ "error": "Cannot proceed. User is logged out" })
@@ -76,7 +75,9 @@ var verifyToken = function (req, res, next) {
 }
 
 const route = express.Router();
-route.use(connectToDb);
+
+route.use(connectionDb);
+
 route.use("/putBudget", verifyToken);
 route.use("/deleteBudget", verifyToken);
 route.use("/deleteBudgetByMonth",verifyToken);
@@ -88,19 +89,19 @@ route.use("/editBudgetByMonth", verifyToken);
 route.use("/refreshToken", verifyToken);
 
 route.post("/signup", [
-    body("firstName", "firstName cannot be empty").notEmpty().trim().escape(),
-    body("firstName", "firstName can have only alphabets").isAlpha().trim().escape(),
-    body("lastName", "lastName cannot be empty").notEmpty().trim().escape(),
-    body("lastName", "lastName can have only alphabets").isAlpha().trim().escape(),
-    body("gender", "gender cannot be empty").notEmpty().trim().escape(),
-    body("gender", "gender can have only alphabets").isAlpha().trim().escape(),
-    body("gender", "gender can only be Male or Female").isIn(["Male", "Female"]),
-    body("age", "age is needed to create user").notEmpty(),
-    body("age", "please enter a valid age").isInt({ gt: 0 }),
-    body("email", "email cannot be empty").notEmpty().trim().escape(),
-    body("email", "invalid email format").isEmail(),
-    body("password", "password cannot be empty").notEmpty().trim(),
-    body("password", "password should have atleast 6 and at max 20 characters").isLength({ min: 6, max: 20 })
+    body("firstName", "First Name should be empty").notEmpty().trim().escape(),
+    body("firstName", "First Name should have only alphabets").isAlpha().trim().escape(),
+    body("lastName", "Last Name should not be empty").notEmpty().trim().escape(),
+    body("lastName", "Last Name should have only alphabets").isAlpha().trim().escape(),
+    body("gender", "Gender should be empty").notEmpty().trim().escape(),
+    body("gender", "Gender should have only alphabets").isAlpha().trim().escape(),
+    body("gender", "Gender should be Male or Female").isIn(["Male", "Female"]),
+    body("age", "Age is required to create user").notEmpty(),
+    body("age", "Please enter a valid age").isInt({ gt: 0 }),
+    body("email", "Email cannot be empty").notEmpty().trim().escape(),
+    body("email", "Invalid email format").isEmail(),
+    body("password", "Password should be empty").notEmpty().trim(),
+    body("password", "Password should have at least 6 and at max 20 characters").isLength({ min: 6, max: 20 })
 ], (request, response) => {
     const err = validationResult(request);
     if (!err.isEmpty()) {
@@ -146,12 +147,6 @@ route.get("/refreshToken", (request, response) => {
     if(decoded._id == undefined){
         return response.status(400).send({"error":"token not generated"});
     }
-    // user._id = decoded._id;
-    // user.age = decoded.age;
-    // user.firstName = decoded.firstName;
-    // user.lastName = decoded.lastName;
-    // user.gender = decoded.gender;
-    // user.email = decoded.email;
 
     decoded.exp = Math.floor(Date.now() / 1000) + (1 * 60);
     var token = jwt.sign(decoded, tokenSecret);
@@ -170,7 +165,6 @@ route.get("/login", [
 
     try {
         var data = request.header('Authorization');
-        //console.log(data);
         var authData = data.split(' ');
 
         if (authData && authData.length == 2 && authData[0] === 'Basic') {
@@ -224,28 +218,9 @@ route.get("/login", [
 
 });
 
-route.get("/users/logout", (request, response) => {
-    const expiryTime = ((decoded.exp * 1000) - Date.now()) / 1000;
-
-    if (expiryTime > 0) {
-        var result = myCache.set(token, decoded.exp, expiryTime);
-        if (!result) {
-            closeConnection();
-            return response.status(400).json({ "error": "could not logout user" });
-        }
-        closeConnection();
-        return response.status(200).json({ "result": "user logged out" });
-    }
-    else {
-        closeConnection();
-        return response.status(400).json({ "error": "token expired" });
-    }
-});
-
 route.get("/test", (request, response) => {
     return response.status(200).json({ "result": "Hello there.. I think it is connected to the database!" });
 });
-
 
 route.get("/users/profile", (request, response) => {
     try {
@@ -275,13 +250,31 @@ route.get("/users/profile", (request, response) => {
     }
 });
 
+route.get("/users/logout", (request, response) => {
+    const expiryTime = ((decoded.exp * 1000) - Date.now()) / 1000;
+
+    if (expiryTime > 0) {
+        var result = myCache.set(token, decoded.exp, expiryTime);
+        if (!result) {
+            closeConnection();
+            return response.status(400).json({ "error": "could not logout user" });
+        }
+        closeConnection();
+        return response.status(200).json({ "result": "user logged out" });
+    }
+    else {
+        closeConnection();
+        return response.status(400).json({ "error": "token expired" });
+    }
+});
+
 route.put("/users", [
-    body("_id", "user id cannot be updated").isEmpty(),
-    body("firstName", "firstName can have only alphabets").optional().isAlpha().trim().escape(),
-    body("lastName", "lastName can have only alphabets").optional().isAlpha().trim().escape(),
-    body("gender", "gender can only be Male or Female").optional().isIn(["Male", "Female"]),
-    body("age", "please enter a valid age").optional().isInt({ gt: 0 }),
-    body("email", "email cannot be updated").isEmpty(),
+    body("_id", "User id should be updated").isEmpty(),
+    body("firstName", "First Name should have only alphabets").optional().isAlpha().trim().escape(),
+    body("lastName", "Last Name should have only alphabets").optional().isAlpha().trim().escape(),
+    body("gender", "Gender should only be Male or Female").optional().isIn(["Male", "Female"]),
+    body("age", "Please enter a valid age").optional().isInt({ gt: 0 }),
+    body("email", "Email cannot be updated").isEmpty(),
     body("password", "password cannot be updated").isEmpty()
 ], (request, response) => {
     var err = validationResult(request);
@@ -348,7 +341,7 @@ route.put("/users", [
 route.get('/getBudget', (request, response) => {
     var query = { "userId": decoded._id };
     console.log(query);
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });
@@ -368,10 +361,88 @@ route.get('/getBudget', (request, response) => {
 });
 });
 
+route.put('/putBudgetByMonth', (request, response) => {
+    var query = { "userId": decoded._id };
+    console.log(query);
+    console.log(request.body.color.includes("#"));
+    if (!request.body.color.includes("#")) {
+        closeConnection();
+        return response.status(400).send("Color must include # value");
+    }
+    if (request.body.color.length != 7) {
+        closeConnection();
+        return response.status(400).send("Color length must be at least 6");
+    }
+    if (!validator.isHexColor(request.body.color)) {
+        closeConnection();
+        return response.status(400).send("Color must be a Hexadecimal value");
+    }
+
+    pbCollection.find(query).toArray((err, result) => {
+        if (err) {
+            closeConnection();
+            return response.status(400).json({ "error": err });
+        } else {
+            console.log(result);
+            if (result.length <= 0) {
+                console.log("no data found");
+                return response.status(400).json({"error":"Please add the constant budget first"});
+            } else {
+                userBudget = result[0];
+                var monthlyBudget = [];
+                var length = userBudget.allotedBudget.length;
+
+                var text = {};
+                text.title = request.body.title;
+                text.budget = request.body.budget;
+                text.color = request.body.color;
+
+                var month = request.body.month;
+                if(userBudget.monthlyBudget == undefined){
+                    var budget = [];
+                    budget[0] = text
+                    monthlyBudget[month] = budget;
+                    userBudget.monthlyBudget = monthlyBudget;
+                }else{
+                    if(userBudget.monthlyBudget[month] == undefined || userBudget.monthlyBudget[month] == null){
+                        var budget = [];
+                        budget[0] = text;
+                        monthlyBudget = userBudget.monthlyBudget;
+                        monthlyBudget[month] = budget;
+                        userBudget.monthlyBudget = monthlyBudget;
+                    }else{
+                        var length = userBudget.monthlyBudget[month].length;
+                        console.log("length : "+length);
+                        var budget = userBudget.monthlyBudget[month];
+                        monthlyBudget = userBudget.monthlyBudget;
+                        budget[length] = text;
+                        monthlyBudget[month] = budget;
+                        userBudget.monthlyBudget = monthlyBudget;
+                    }
+                }
+        
+                console.log("after modification "+userBudget.monthlyBudget);
+
+                var newQuery={$set:{"monthlyBudget":userBudget.monthlyBudget}};
+
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
+                    if(e){
+                        closeConnection();
+                        return response.status(400).json({"error":err});
+                    }
+                    else{
+                        closeConnection();
+                        return response.status(200).json({"result":"monthly budget updated"});
+                    }
+                });   
+            }
+        }
+    });
+});
+
 route.put('/putBudget', (request, response) => {
     var query = { "userId": decoded._id };
     console.log(query);
-    // For validation of the user inserting the budget
     console.log(request.body.color.includes("#"));
     if (!request.body.color.includes("#")) {
         closeConnection();
@@ -386,19 +457,15 @@ route.put('/putBudget', (request, response) => {
         return response.status(400).send("Color must be a Hexadecimal value");
     }
 
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });
         } else {
             console.log(result);
-            // closeConnection();
             if (result.length <= 0) {
                 console.log("no data found");
-                // have to create a new user with their constant items
-                //insertOne
                 var data = {};
-                // data.userId = decoded._id;
                 var allotedBudget = [];
                 var text = {};
                 data.userId = decoded._id;
@@ -408,7 +475,7 @@ route.put('/putBudget', (request, response) => {
                 allotedBudget[0] = text;
                 data.allotedBudget = allotedBudget;
                 console.log(data);
-                pb_collection.insertOne(data, (e, reslt) => {
+                pbCollection.insertOne(data, (e, result) => {
                     if (e) {
                         closeConnection();
                         return response.status(400).json({ "error": err });
@@ -420,8 +487,6 @@ route.put('/putBudget', (request, response) => {
                 });
             } else {
                 console.log("already present");
-                //have to update the constant items
-                //updateOne
                 var userBudget = result[0];
                 var length = userBudget.allotedBudget.length;
 
@@ -444,7 +509,7 @@ route.put('/putBudget', (request, response) => {
 
                 var newQuery={$set:{"allotedBudget":userBudget.allotedBudget}};
 
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
                     if(e){
                         closeConnection();
                         return response.status(400).json({"error":err});
@@ -459,105 +524,20 @@ route.put('/putBudget', (request, response) => {
     });
 });
 
-
-route.put('/putBudgetByMonth', (request, response) => {
-    var query = { "userId": decoded._id };
-    console.log(query);
-    // For validation of the user inserting the budget
-    console.log(request.body.color.includes("#"));
-    if (!request.body.color.includes("#")) {
-        closeConnection();
-        return response.status(400).send("Color must include # value");
-    }
-    if (request.body.color.length != 7) {
-        closeConnection();
-        return response.status(400).send("Color length must be atleast 6");
-    }
-    if (!validator.isHexColor(request.body.color)) {
-        closeConnection();
-        return response.status(400).send("Color must be a Hexadecimal value");
-    }
-
-    pb_collection.find(query).toArray((err, result) => {
-        if (err) {
-            closeConnection();
-            return response.status(400).json({ "error": err });
-        } else {
-            console.log(result);
-            // closeConnection();
-            if (result.length <= 0) {
-                console.log("no data found");
-                return response.status(400).json({"error":"Please add the constant budget first"});
-            } else {
-                userBudget = result[0];
-                var monthlyBudget = [];
-                var length = userBudget.allotedBudget.length;
-
-                var text = {};
-                text.title = request.body.title;
-                text.budget = request.body.budget;
-                text.color = request.body.color;
-
-                var month = request.body.month;
-                if(userBudget.monthlyBudget == undefined){
-                    var budget = [];
-                    budget[0] = text
-                    monthlyBudget[month] = budget;
-                    userBudget.monthlyBudget = monthlyBudget;
-                }else{
-                    if(userBudget.monthlyBudget[month] == undefined || userBudget.monthlyBudget[month] == null){
-                        //newly should be created
-                        var budget = [];
-                        budget[0] = text;
-                        monthlyBudget = userBudget.monthlyBudget;
-                        monthlyBudget[month] = budget;
-                        userBudget.monthlyBudget = monthlyBudget;
-                    }else{
-                        var length = userBudget.monthlyBudget[month].length;
-                        console.log("length : "+length);
-                        var budget = userBudget.monthlyBudget[month];
-                        monthlyBudget = userBudget.monthlyBudget;
-                        budget[length] = text;
-                        monthlyBudget[month] = budget;
-                        userBudget.monthlyBudget = monthlyBudget;
-                    }
-                }
-        
-                console.log("after modification "+userBudget.monthlyBudget);
-
-                var newQuery={$set:{"monthlyBudget":userBudget.monthlyBudget}};
-
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
-                    if(e){
-                        closeConnection();
-                        return response.status(400).json({"error":err});
-                    }
-                    else{
-                        closeConnection();
-                        return response.status(200).json({"result":"monthly budget updated"});
-                    }
-                });   
-            }
-        }
-    });
-});
-
 route.put('/deleteBudget', (request, response) => {
 
     var query = { "userId": decoded._id };
     console.log(query);
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });
         } else {
             console.log(result);
-            // closeConnection();
             if (result.length <= 0) {
                 console.log("no data found");
             } else {
                 console.log("already present");
-                //delete the Budget as per the name
                 var budget_name = request.body.title;
                 var userBudget = result[0];
                 var length = userBudget.allotedBudget.length;
@@ -573,7 +553,7 @@ route.put('/deleteBudget', (request, response) => {
 
                 var newQuery={$set:{"allotedBudget":userBudget.allotedBudget}};
 
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
                     if(e){
                         closeConnection();
                         return response.status(400).json({"error":err});
@@ -588,69 +568,20 @@ route.put('/deleteBudget', (request, response) => {
     });
 });
 
-route.put('/editBudget', (request, response) => {
-
-    var query = { "userId": decoded._id };
-    console.log(query);
-    pb_collection.find(query).toArray((err, result) => {
-        if (err) {
-            closeConnection();
-            return response.status(400).json({ "error": err });
-        } else {
-            console.log(result);
-            // closeConnection();
-            if (result.length <= 0) {
-                console.log("no data found");
-            } else {
-                console.log("already present");
-                //delete the Budget as per the name
-                var budget_name = request.body.title;
-                var userBudget = result[0];
-                var length = userBudget.allotedBudget.length;
-                let i=0;
-                for(i=0; i<length; i++){
-                    if(budget_name == userBudget.allotedBudget[i].title){
-                        break;
-                    }
-                }
-                userBudget.allotedBudget[i].color = request.body.color;
-                userBudget.allotedBudget[i].budget = request.body.budget;
-
-                console.log("after modification "+userBudget.allotedBudget);
-
-                var newQuery={$set:{"allotedBudget":userBudget.allotedBudget}};
-
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
-                    if(e){
-                        closeConnection();
-                        return response.status(400).json({"error":err});
-                    }
-                    else{
-                        closeConnection();
-                        return response.status(200).json({"result":"Budget Updated"});
-                    }
-                });
-            }
-        }
-    });
-});
-
 route.put('/deleteBudgetByMonth', (request, response) => {
 
     var query = { "userId": decoded._id };
     console.log(query);
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });
         } else {
             console.log(result);
-            // closeConnection();
             if (result.length <= 0) {
                 console.log("no data found");
             } else {
                 console.log("already present");
-                //delete the Budget as per the name
                 var budget_name = request.body.title;
                 var userBudget = result[0];
                 var month = request.body.month;
@@ -671,7 +602,7 @@ route.put('/deleteBudgetByMonth', (request, response) => {
 
                 var newQuery={$set:{"monthlyBudget":monthlyBudget}};
 
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
                     if(e){
                         closeConnection();
                         return response.status(400).json({"error":err});
@@ -686,22 +617,65 @@ route.put('/deleteBudgetByMonth', (request, response) => {
     });
 });
 
-route.put('/editBudgetByMonth', (request, response) => {
+route.put('/editBudget', (request, response) => {
 
     var query = { "userId": decoded._id };
     console.log(query);
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });
         } else {
             console.log(result);
-            // closeConnection();
             if (result.length <= 0) {
                 console.log("no data found");
             } else {
                 console.log("already present");
-                //delete the Budget as per the name
+                var budget_name = request.body.title;
+                var userBudget = result[0];
+                var length = userBudget.allotedBudget.length;
+                let i=0;
+                for(i=0; i<length; i++){
+                    if(budget_name == userBudget.allotedBudget[i].title){
+                        break;
+                    }
+                }
+                userBudget.allotedBudget[i].color = request.body.color;
+                userBudget.allotedBudget[i].budget = request.body.budget;
+
+                console.log("after modification "+userBudget.allotedBudget);
+
+                var newQuery={$set:{"allotedBudget":userBudget.allotedBudget}};
+
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
+                    if(e){
+                        closeConnection();
+                        return response.status(400).json({"error":err});
+                    }
+                    else{
+                        closeConnection();
+                        return response.status(200).json({"result":"Budget Updated"});
+                    }
+                });
+            }
+        }
+    });
+});
+
+route.put('/editBudgetByMonth', (request, response) => {
+
+    var query = { "userId": decoded._id };
+    console.log(query);
+    pbCollection.find(query).toArray((err, result) => {
+        if (err) {
+            closeConnection();
+            return response.status(400).json({ "error": err });
+        } else {
+            console.log(result);
+            if (result.length <= 0) {
+                console.log("no data found");
+            } else {
+                console.log("already present");
                 var budget_name = request.body.title;
                 var userBudget = result[0];
                 var month = request.body.month;
@@ -723,7 +697,7 @@ route.put('/editBudgetByMonth', (request, response) => {
 
                 var newQuery={$set:{"monthlyBudget":monthlyBudget}};
 
-                pb_collection.updateOne(query,newQuery,(e,reslt)=>{
+                pbCollection.updateOne(query,newQuery,(e,result)=>{
                     if(e){
                         closeConnection();
                         return response.status(400).json({"error":err});
@@ -743,7 +717,7 @@ route.get('/getBudgetByMonth/:month', (request, response) => {
     console.log(query);
     const month = request.params.month;
     console.log(month)
-    pb_collection.find(query).toArray((err, result) => {
+    pbCollection.find(query).toArray((err, result) => {
         if (err) {
             closeConnection();
             return response.status(400).json({ "error": err });

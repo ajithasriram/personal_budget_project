@@ -37,7 +37,7 @@ export class BudgetComponent implements OnInit {
       'Authorization': `Bearer ${cookieValue}`
     })
 
-    this.http.get('http://localhost:3000/api/v1/getBudget', { headers })
+    this.http.get('http://204.48.23.149:3000/api/v1/getBudget', { headers })
       .subscribe(posts => {
         this.posts = posts["user_budget"].allotedBudget;
 

@@ -22,12 +22,12 @@ export class DataService {
     const config = {
       headers: { Authorization: 'Bearer ' + cookieValue }
     };
-    return axios.get('http://localhost:3000/api/v1/getBudget', config);
+    return axios.get('http://204.48.23.149:3000/api/v1/getBudget', config);
   }
 
   public checkCredentials(user_val, pass_val) {
     console.log('check credentials inside service');
-    return axios.get('http://localhost:3000/api/v1/login', {
+    return axios.get('http://204.48.23.149:3000/api/v1/login', {
       auth: {
         username: user_val,
         password: pass_val
@@ -38,7 +38,7 @@ export class DataService {
   public register_user(first_name, last_name, age_val, gender_val, email_val, password_Val) {
     console.log('check credentials inside service');
 
-    return axios.post('http://localhost:3000/api/v1/signup',
+    return axios.post('http://204.48.23.149:3000/api/v1/signup',
       {
         "firstName": first_name,
         'lastName': last_name,
@@ -64,7 +64,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/putBudget', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/putBudget', data, config);
   }
 
   public delete_budget(budget_name) {
@@ -80,7 +80,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/deleteBudget', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/deleteBudget', data, config);
   }
 
   public edit_budget(budget_name, budget_amount, budget_color) {
@@ -98,7 +98,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/editBudget', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/editBudget', data, config);
   }
 
   public edit_budget_by_month(budget_name, budget_amount, budget_color, month_Value) {
@@ -117,7 +117,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/editBudgetByMonth', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/editBudgetByMonth', data, config);
   }
 
   public delete_budget_by_month(budget_name, month) {
@@ -134,7 +134,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/deleteBudgetByMonth', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/deleteBudgetByMonth', data, config);
   }
 
   public putBudgetByMonth(title, budget, color, month_value) {
@@ -153,7 +153,7 @@ export class DataService {
       headers: { Authorization: 'Bearer ' + cookieValue },
 
     };
-    return axios.put('http://localhost:3000/api/v1/putBudgetByMonth', data, config);
+    return axios.put('http://204.48.23.149:3000/api/v1/putBudgetByMonth', data, config);
   }
 
 

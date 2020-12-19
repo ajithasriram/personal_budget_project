@@ -34,13 +34,11 @@ export class AddBugetComponent implements OnInit {
       'Authorization': `Bearer ${cookieValue}`
     });
 
-    //getting the month and the year
     var start = (document.getElementById('start') as HTMLInputElement).value;
-    //fetching only month in it.
     var month = start.split("-");
     var month_value = parseInt(month[1]) - 1;
 
-    this.http.get('http://localhost:3000/api/v1/getBudgetByMonth/' + month_value, { headers })
+    this.http.get('http://204.48.23.149:3000/api/v1/getBudgetByMonth/' + month_value, { headers })
       .subscribe(posts => {
         this.posts = posts["user_budget"];
 
@@ -63,9 +61,7 @@ export class AddBugetComponent implements OnInit {
     const budget = (document.getElementById('amount') as HTMLInputElement).value;
     const color = (document.getElementById('color') as HTMLInputElement).value;
 
-    //getting the month and the year
     var start = (document.getElementById('start') as HTMLInputElement).value;
-    //fetching only month in it.
     var month = start.split("-");
     var month_value = parseInt(month[1]) - 1;
 
@@ -80,7 +76,6 @@ export class AddBugetComponent implements OnInit {
   }
 
   editBudget(editBudgetTitle, editBudgetAmount, editBudgetColor) {
-    // alert("hello it is editBudget : " + editBudgetTitle);
     var edit_form = document.getElementById("edit-form") as HTMLElement;
     edit_form.style.display = "";
     (document.getElementById('edit-title') as HTMLInputElement).value = editBudgetTitle;
@@ -90,9 +85,7 @@ export class AddBugetComponent implements OnInit {
   }
 
   editButtonSubmit() {
-    //getting the month and the year
     var start = (document.getElementById('start') as HTMLInputElement).value;
-    //fetching only month in it.
     var month = start.split("-");
     var month_value = parseInt(month[1]) - 1;
     const editBudgetTitle = (document.getElementById('edit-title') as HTMLInputElement).value;
@@ -111,9 +104,7 @@ export class AddBugetComponent implements OnInit {
   }
 
   deleteBudgetByMonth(deleteBudgetTitle) {
-    //getting the month and the year
     var start = (document.getElementById('start') as HTMLInputElement).value;
-    //fetching only month in it.
     var month = start.split("-");
     var month_value = parseInt(month[1]) - 1;
 
